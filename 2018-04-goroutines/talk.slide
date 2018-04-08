@@ -1,0 +1,227 @@
+Goroutines
+Funções assíncronas sem perder a sanidade
+
+Rodrigo Brito
+contato@rodrigobrito.net
+https://www.rodrigobrito.net
+
+* Sobre mim
+
+.image img/about.jpg _ 960
+
+*Rodrigo*Brito* - Software Developer
+GitHub - [[https://github.com/rodrigo-brito][github.com/rodrigo-brito]]
+Twitter - [[https://twitter.com/RodrigoFBrito][@RodrigoFBrito]]
+Steam - [[https://steamcommunity.com/id/rodrigo-brito][rBRITO/rodrigo-brito]]
+
+
+* Atualidade
+
+Aplicações complexas
+
+Diversidade de eventos
+
+Hardware extremamente potente e de baixo custo
+
+- Processadores com vários núcleos (4, 8, 12, etc.)
+- Celulares mais potentes que computadores
+- Recurso computacional ocioso
+.image img/cpu.jpg _ 960
+
+* Hardware evoluiu. E nossos softwares?
+
+* 
+.background img/tenor.gif
+#  Video https://www.youtube.com/watch?v=2gjuyLytXmQ
+
+* 
+.background img/multicore.gif
+
+* Como reverter isso?
+
+* Concorrência e paralelismo
+
+Utilizar recursos de linguagem que usurfruem da concorrência/paralelismo
+- *Actors* - Erlang, Scala
+- *Fibers* - Ruby
+- *Threads* - Java, C++, etc.
+- *Goroutines* - Go
+
+.image img/async.png _ 960
+
+* Goroutine
+
+Uma *lightweight*thread* gerenciada pelo Go runtime
+
+Uma *Goroutine* é uma função que é capaz de executar *concorrentemente* com outras funções - *Caleb* *Doxsey* [[https://www.golang-book.com/books/intro/10][(An Introduction to Programming in Go)]]
+
+Compartilha o mesmo espaço de memória, logo precisa que o acesso seja sincronizado
+
+- Palavra reservada *go*
+- Não é permitido atribuição direta
+
+	go example()
+ 
+	go func(){
+		result := exampleTwo()
+	}()
+
+* Exemplo básico
+
+* Impressão síncrona
+
+Ordem de execução garantida
+
+.code code/example_1/sync.go /func task/,/}/
+.play code/example_1/sync.go /func main/,
+
+* Impressão assíncrona
+
+Ordem de execução não garantida
+
+Necessidade de contenção de fluxo *time.Sleep()*
+
+.code code/example_1/async.go /func task/,/}/
+.play -edit code/example_1/async.go /func main/,
+
+Sleep é muito feio :(
+
+Como saber quando irá finaliza cada tarefa?
+
+
+* WaitGroup
+
+Cada tarefa assíncrona sinaliza sua finalização
+
+.code code/example_1/waitgroup.go /func task/,/}/
+.play code/example_1/waitgroup.go /func main/,
+
+* Channel
+
+Valor via *channel* sinaliza finalização
+
+.code code/example_1/channel.go /func task/,/}/
+.play code/example_1/channel.go /func main/,
+
+* Comunicação
+
+* Channels
+
+Channels são estruturas de comunicação que podem ser utilizadas entre Goroutines concorrentes
+
+Permite leitura e escrita assíncrona de forma segura
+
+	// criar canal
+	ch := make(chan int)
+	ch := make(chan int, 5)
+
+    // ler valor do canal
+    value := <-ch
+    // escrever valor no canal
+    ch <- 13
+
+	// fechar canal
+	close(ch)
+
+	// iterar valores que são recebidos
+	for i := range ch {
+		// ...
+	}
+
+* Mutex
+
+.play code/example_2/mutex.go /wg/,/wg\.Wait/
+
+- Risco de deadlocks
+- Mutex proporciona um código mais sequencial
+- *sync* e *sync/atomic* - Alterantivas para operações concorrentes
+
+* 
+
+.image img/semaforo.jpg _ 960
+
+* Exemplo de comunicação
+
+* Exemplo: Calcular raiz quadrada
+
+Gerar 10.000 números e calcular a raiz quarada aproximada via método de Newton
+.image img/sqrt.png _ 300
+
+*Cenário*síncrono*
+- Gerar lista com 10.000 números
+- Iterar lista e efetuar cálculos
+
+*Cenário*assíncrono* - Ideal
+- Gerar números e distribuí-los a medida que criados
+- Várias tarefas assíncronas efetuando os cálculos simultaneamente
+
+Necessário um canal de comunicação para geração de números e um canal de comunicação para resultados
+
+* Cenário síncrono
+.code code/example_2/sync.go /sqrtSync/,/randVectorSync/,/}/,/}/
+.play code/example_2/sync.go /result := make\(\[\]float32, 1/,/}/
+
+* Cenário assíncrono - Produtor
+
+Gerador de números aleatórios
+- Recebe um *channel* de escrita (`chan<-`)
+- Fecha o canal ao finalizar
+
+.code code/example_2/async.go /randVectorAsync/,/}/,/}/
+
+* Cenário assíncrono - Consumidor
+
+- Recebe um *channel* de leitura (`<-chan`) - Valores de entrada
+- Recebe um *channel* de escrita (`chan<-`) - Resultados
+- Itera valores no canal até que seja fechado
+- Transmite os resultados por outro canal
+
+.code code/example_2/async.go /sqrtAsync/,/}/,/}/
+.code code/example_2/async.go /sqrtSync/,/}/,/}/
+
+* Cenário assíncrono - Composição
+
+- 1 Produtor e 8 Consumidores
+
+.play code/example_2/async.go /func main/,/}/,/}/
+
+* 
+.background img/knuth.jpg
+
+* Utilidades
+
+* Async.Run() - https://github.com/StudioSol/async
+	user := new(model.User)
+	err := async.Run(ctx,
+		func(ctx context.Context) error {
+			return storage.DeleteFile(ctx, bucket, fileName)
+		},
+		func(ctx context.Context) error {
+			return mail.SendConfirmation(ctx, address, message)
+		},
+		func(ctx context.Context) error {
+			user, err = repository.FetchUser(ctx, ID)
+			return err
+		},
+	)
+	if err != nil {
+		log.Log(err)
+	}
+
+Ainda mais simples
+
+	var tasks []func(ctx context.Context) error
+	err := async.Run(tasks...)
+
+* Outros links
+
+- Go Tracer - [[https://github.com/gopherconbr/2017-talks/blob/master/go-execution-tracer.pdf][André Carvalho - Gophercon BR 2017]]
+- Defer, Panic, and Recover - [[https://blog.golang.org/defer-panic-and-recover][Go Blog]]
+- Monitorar Goroutines - [[https://github.com/bcicen/grmon][(Github - bcicen/grmon)]]
+- async.Waterfall (Sem Context) - [[https://github.com/bcicen/grmon][(Github - rafaeldias/async)]]
+- Goroutines e Context - [[https://blog.golang.org/context][(Go Concurrency Patterns: Context)]]
+- Concurrency Is Not Parallelism - [[https://vimeo.com/49718712][Rob Pike - Heroku Talk]]
+- Padrões de Projeto (Composição de Channels) - [[][André - Meetup Go BH]]
+
+* 
+.background img/acabou.gif
