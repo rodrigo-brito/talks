@@ -1,6 +1,5 @@
 install:
-	go get -u golang.org/x/net/...
-	go install -u golang.org/x/tools/...
+	go get -u golang.org/x/tools/cmd/present
 	go install golang.org/x/tools/cmd/present
 run:
 	present
